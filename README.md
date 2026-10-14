@@ -9,21 +9,24 @@ de um Trabalho de Conclusão de Curso (TCC) e mantido pelo LEMAF
 
 ---
 
-## Este repositório não é autossuficiente — leia isto primeiro
+## Os dados ficam neste mesmo repositório
 
-Este repositório guarda o **código** do app e a **documentação**. Ele **não**
-contém os dados em si (os arquivos `.xlsx` da PNAD são grandes demais para o
-GitHub). Antes de rodar ou publicar o app, é preciso:
-
-1. Pegar os arquivos `.xlsx` na pasta compartilhada do laboratório:
-   `[COLOCAR AQUI O LINK DA PASTA COMPARTILHADA DO LEMAF]`
-2. Colocá-los dentro da pasta `dados/` deste projeto (ela já existe, mas
-   vazia — o Git ignora os `.xlsx` de propósito, ver `.gitignore`).
+Diferente do que costuma ser recomendado para bases muito grandes, aqui os
+`.xlsx` da PNAD **ficam dentro da pasta `dados/`, versionados no GitHub
+junto com o código** — nenhum arquivo individual passa de 100MB (o limite
+do GitHub), então não há problema técnico em mantê-los juntos. Isso
+simplifica a vida de quem for manter o projeto: cloná-lo já traz tudo.
 
 Se os dados da PNAD forem atualizados (novo trimestre, por exemplo), a
 pessoa responsável deve gerar o novo `.xlsx` (script de importação, feito
-com o pacote `PNADcIBGE`) e subir esse arquivo novo na pasta compartilhada
-— **não** no GitHub.
+com o pacote `PNADcIBGE`), colocar dentro de `dados/` e publicar a mudança
+pelo GitHub Desktop, do mesmo jeito que uma mudança de código (ver seção
+"Como atualizar o código", abaixo).
+
+**Se no futuro a pasta `dados/` crescer muito** (se aproximando de ~1GB no
+total), vale reconsiderar mover os dados para uma pasta compartilhada do
+laboratório (Drive/OneDrive) e ajustar o `.gitignore` — mas não é o caso
+agora.
 
 ---
 
@@ -34,8 +37,8 @@ com o pacote `PNADcIBGE`) e subir esse arquivo novo na pasta compartilhada
 ├── app.R                  ← o dashboard em si (Shiny)
 ├── documentacao_app.md    ← como o código funciona por dentro
 ├── guia_funcoes.md        ← explicação das funções usadas (bom para quem está aprendendo R/Shiny)
-├── dados/                 ← VAZIA aqui — os .xlsx reais vêm da pasta compartilhada (ver acima)
-└── .gitignore             ← impede que dados pesados e arquivos locais sejam versionados
+├── dados/                 ← os .xlsx da PNAD e o cache .rds, versionados aqui mesmo
+└── .gitignore             ← impede que arquivos locais (específicos de cada PC) sejam versionados
 ```
 
 ---
@@ -48,9 +51,9 @@ com o pacote `PNADcIBGE`) e subir esse arquivo novo na pasta compartilhada
    install.packages(c("shiny", "dplyr", "DT", "ggplot2", "writexl",
                        "readxl", "tibble", "leaflet", "sf", "shinyWidgets"))
    ```
-3. Clone este repositório (ver seção "Como atualizar o código", abaixo).
-4. Coloque os `.xlsx` da pasta compartilhada do laboratório dentro de `dados/`.
-5. Abra `app.R` no RStudio e clique em **Run App** (ou rode `shiny::runApp()`
+3. Clone este repositório (ver seção "Como atualizar o código", abaixo) — os
+   dados já vêm juntos, dentro de `dados/`.
+4. Abra `app.R` no RStudio e clique em **Run App** (ou rode `shiny::runApp()`
    com a pasta do projeto como diretório de trabalho).
 
 Na primeira vez, o app vai demorar um pouco mais (lendo todos os `.xlsx` e
@@ -88,8 +91,7 @@ Isso **não publica a mudança no app ao vivo** — isso é um passo separado
    rsconnect::setAccountInfo(name = "pnadlemaf", token = "...", secret = "...")
    ```
 2. Com a pasta do projeto como diretório de trabalho (confirme com
-   `getwd()`), **e com os `.xlsx` da pasta compartilhada já dentro de
-   `dados/`**, rode:
+   `getwd()`), rode:
    ```r
    rsconnect::deployApp(appName = "indicadores-florestal-mg")
    ```
