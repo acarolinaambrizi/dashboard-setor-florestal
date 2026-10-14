@@ -23,10 +23,14 @@ com o pacote `PNADcIBGE`), colocar dentro de `dados/` e publicar a mudança
 pelo GitHub Desktop, do mesmo jeito que uma mudança de código (ver seção
 "Como atualizar o código", abaixo).
 
-**Se no futuro a pasta `dados/` crescer muito** (se aproximando de ~1GB no
-total), vale reconsiderar mover os dados para uma pasta compartilhada do
-laboratório (Drive/OneDrive) e ajustar o `.gitignore` — mas não é o caso
-agora.
+**Nota sobre o tamanho:** a pasta `dados/` já soma mais de 1GB (58 trimestres
+da PNAD, de 2012 a 2026) e só vai crescer a cada atualização — isso é uma
+escolha consciente, priorizando simplicidade (um único clone traz tudo) em
+troca de clones um pouco mais lentos com o tempo. Vale ficar de olho: se um
+dia isso virar um incômodo real (clone muito lento, por exemplo), a solução
+é mover os `.xlsx` para uma pasta compartilhada do laboratório e ajustar o
+`.gitignore` — mas isso não desfaz o que já está no histórico do Git, só
+evita que a pasta cresça mais a partir dali.
 
 ---
 
