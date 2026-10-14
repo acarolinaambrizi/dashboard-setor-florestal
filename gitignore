@@ -1,0 +1,16 @@
+# Dados brutos e caches — pesados demais para o GitHub (e mudam com
+# frequência diferente do código). Ficam na pasta compartilhada do
+# laboratório (ver link no README.md) e são colocados manualmente aqui
+# em "dados/" antes de rodar ou publicar o app, localmente.
+dados/*.xlsx
+dados/_cache_*.rds
+
+# Arquivos que o rsconnect cria no seu computador ao publicar — são
+# específicos de cada pessoa/máquina, não fazem sentido versionar.
+rsconnect/
+
+# Arquivos padrão do R / RStudio
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
