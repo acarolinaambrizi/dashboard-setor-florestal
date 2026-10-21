@@ -1,8 +1,3 @@
-# ============================================================
-# DASHBOARD - INDICADORES DO SETOR FLORESTAL (PNAD CONTÍNUA)
-# Ver documentacao_app.md para detalhes sobre cada parte.
-# ============================================================
-
 library(shiny)
 library(dplyr)
 library(DT)
@@ -12,16 +7,15 @@ library(readxl)
 library(tibble)
 library(leaflet)
 library(sf)
-library(shinyWidgets)  # pickerInput: dropdown com seta igual ao "Ano", permitindo marcar vários
+library(shinyWidgets)
 
-# ---- 1) Carregamento dos dados ------------------------------
+#  Carregamento dos dados
 pasta_dados <- "dados/"
 arquivos <- list.files(pasta_dados, pattern = "\\.xlsx$", full.names = TRUE)
 cache_dados <- file.path(pasta_dados, "_cache_dados_pnadc.rds")
 
-# Mude para TRUE sempre que adicionar/trocar um .xlsx na pasta "dados/" e
-# quiser forçar a reimportação (senão, enquanto o cache existir e for mais
-# recente que os arquivos, ele é reaproveitado e a abertura do app fica
+# IMPORTANTE: Mude para TRUE sempre que adicionar/trocar um .xlsx na pasta "dados/" e
+# quiser forçar a reimportação caso contrário, ele é reaproveitado e a abertura do app fica
 # muito mais rápida).
 forcar_reimportacao <- FALSE
 
@@ -30,16 +24,11 @@ cache_valido <- file.exists(cache_dados) &&
   all(file.info(cache_dados)$mtime > file.info(arquivos)$mtime)
 
 if (cache_valido) {
-
+  
   dados_pnadc <- readRDS(cache_dados)
-
+  
 } else {
-
-  # col_types = "text" evita que o readxl "adivinhe" o tipo de cada coluna
-  # pelas primeiras linhas (o que estava descartando respostas da V4006A
-  # como NA e gerando milhares de avisos no console, deixando a leitura
-  # muito mais lenta). As conversões numéricas necessárias (V4039, V20082,
-  # etc.) já são feitas depois, em preparar_var().
+  #Le novamente as informações caso cache_valido for True
   dados_pnadc <- lapply(arquivos, function(arq) {
     df <- read_xlsx(arq, col_types = "text")
     codigo <- gsub("[^0-9]", "", basename(arq))
@@ -47,19 +36,17 @@ if (cache_valido) {
     df$trimestre <- as.numeric(substr(codigo, 5, 6))
     df
   }) %>% bind_rows()
-
-  # Filtro pelo setor florestal (CNAE-Domiciliar "02000") — feito antes de
-  # salvar o cache, para o arquivo .rds ficar pequeno e rápido de carregar.
+  
+  # Filtro pelo setor florestal (CNAE-Domiciliar "02000")
   dados_pnadc <- dados_pnadc %>% filter(V4013 == "02000")
-
+  
   saveRDS(dados_pnadc, cache_dados)
 }
 
-# Estados (UF) disponíveis na base, para os seletores de Estado
+# Estados disponíveis na base, para os seletores de Estado
 lista_ufs <- sort(unique(dados_pnadc$UF))
 
-# Opções padrão dos pickerInput de Estado (dropdown com seta, igual ao "Ano",
-# mas com caixa de marcar em cada item e botões prontos de selecionar/limpar)
+# Opções padrão dos pickerInput de Estado
 picker_opcoes <- pickerOptions(
   actionsBox = TRUE,
   liveSearch = TRUE,
@@ -70,7 +57,7 @@ picker_opcoes <- pickerOptions(
   noneSelectedText = "Nenhum estado selecionado"
 )
 
-# Mesma ideia, para o seletor de Trimestre (sem busca, já que são só 4 itens)
+# Mesma ideia do picker dos Estados, para o seletor de Trimestre
 picker_opcoes_trimestre <- pickerOptions(
   actionsBox = TRUE,
   selectedTextFormat = "count > 2",
@@ -80,11 +67,8 @@ picker_opcoes_trimestre <- pickerOptions(
   noneSelectedText = "Nenhum trimestre selecionado"
 )
 
-# ---- Mapa do Brasil (contorno dos estados, via API do IBGE) -----
-# TODO: se o mapa não carregar, confira com names(mapa_brasil) se a
-# coluna de código do estado realmente se chama "codarea" (API do IBGE).
-# O contorno é salvo em cache local (dados/_cache_mapa_brasil.rds) na
-# primeira vez, para não depender da internet/API em toda abertura do app.
+# Mapa do Brasil (contorno dos estados, via API do IBGE) Widget pronto
+
 cache_mapa <- file.path(pasta_dados, "_cache_mapa_brasil.rds")
 
 mapa_brasil <- if (file.exists(cache_mapa)) {
@@ -117,7 +101,7 @@ if (!is.null(mapa_brasil) && "codarea" %in% names(mapa_brasil)) {
   mapa_brasil$UF <- cod_uf_nome[as.character(mapa_brasil$codarea)]
 }
 
-# ---- Dicionário de códigos da PNAD Contínua -----------------
+#  Dicionário de códigos da PNAD Contínua atribuindo vetores
 desc_gerais <- c(
   V2007  = "Sexo",
   V2010  = "Cor ou raça",
@@ -154,7 +138,7 @@ dicionario_pnad <- bind_rows(
   tibble(categoria = "Setor (CNAE-Domiciliar)", codigo = names(desc_setor),    descricao = unname(desc_setor))
 )
 
-# ---- Apoio às abas Análises / Comparações / Mapa --------------
+# Apoio às abas Análises / Comparações / Mapa
 vars_fora_da_analise <- c("V40132A")
 vars_numericas <- c("V4039", "V20082")
 
@@ -277,9 +261,7 @@ baixar_grafico <- function(nome_fn, plot_reativo, largura = 10, altura = 6) {
 cond_categorica <- sprintf("!['%s'].includes(input.an_variavel)",
                            paste(vars_numericas, collapse = "','"))
 
-# -- Apoio só da aba Comparações: trata UMA variável categórica, sem
-# amarrar o nome da coluna de saída a "valor" (usado duas vezes: eixo X
-# e eixo Y de um mesmo cruzamento) --
+
 rotular_categoria <- function(df, var) {
   if (var == "V4010") {
     df %>% filter(!is.na(V4010)) %>% mutate(.cat = mapear_ocupacao(V4010))
@@ -294,7 +276,7 @@ rotular_categoria <- function(df, var) {
   }
 }
 
-# Prepara duas colunas categóricas (cat_x, cat_y) já agrupadas/ordenadas,
+# Prepara duas colunas categóricas já agrupadas/ordenadas,
 # reaproveitando agrupar_top()/ordenar_categorias() (que operam em "valor")
 preparar_cruzamento <- function(df, var_x, var_y) {
   df <- rotular_categoria(df, var_x) %>%
@@ -343,9 +325,9 @@ grafico_cruzamento_num <- function(df, var_num, var_cat, inverter) {
     filter(!is.na(num), num > 0)
   validate(need(nrow(d) > 0, "Sem dados para os filtros selecionados."))
   lab_cat <- rotulo_variavel(var_cat); lab_num <- rotulo_variavel(var_num)
-
+  
   resumo <- d %>% group_by(cat) %>% summarise(media = mean(num), .groups = "drop")
-
+  
   p <- ggplot(resumo, aes(x = cat, y = media)) +
     geom_col(fill = "#1267a8") +
     geom_text(aes(label = round(media, 1)), vjust = -0.5, size = 3.5) +
@@ -357,7 +339,7 @@ grafico_cruzamento_num <- function(df, var_num, var_cat, inverter) {
   p
 }
 
-# ---- 2) Interface (UI) ---------------------------------------
+#  2) Interface (UI)
 ui <- fluidPage(
   tags$head(tags$style(HTML("
     table.dataTable td, table.dataTable th {
@@ -371,155 +353,199 @@ ui <- fluidPage(
   titlePanel("Indicadores do Setor Florestal"),
   navlistPanel(
     widths = c(2, 10),
-
-  # -- Aba 1: Dados --
-  tabPanel("Dados",
-    sidebarLayout(
-      sidebarPanel(
-        selectInput("filtro_ano", "Ano:",
-                    choices = sort(unique(dados_pnadc$ano), decreasing = TRUE)),
-        pickerInput("filtro_trimestre", "Trimestre:",
-                    choices = sort(unique(dados_pnadc$trimestre)),
-                    selected = sort(unique(dados_pnadc$trimestre)),
-                    multiple = TRUE, options = picker_opcoes_trimestre),
-        pickerInput("filtro_uf", "Estado (UF):",
-                    choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
-                    options = picker_opcoes),
-        downloadButton("baixar_excel", "Exportar para Excel"),
-        br(), br(),
-        downloadButton("baixar_dicionario", "Baixar dicionário de códigos")
-      ),
-      mainPanel(
-        DTOutput("tabela_dados", height = "420px"),
-        hr(),
-        h4("Dicionário de códigos da PNAD Contínua"),
-        DTOutput("tabela_dicionario", height = "280px")
-      )
+    
+    # Aba 0: Sobre a PNAD
+    tabPanel("Sobre a PNAD",
+             h3("O que é a PNAD Contínua"),
+             p("A Pesquisa Nacional por Amostra de Domicílios Contínua (PNAD Contínua) é um",
+               "levantamento domiciliar conduzido pelo Instituto Brasileiro de Geografia e",
+               "Estatística (IBGE) desde 2012. Trimestralmente, mais de 210 mil domicílios são",
+               "investigados em todo o território nacional, com rotação de painel: cada domicílio",
+               "é acompanhado por cinco entrevistas consecutivas ao longo de 15 meses."),
+             p("A pesquisa reúne informações sobre características demográficas, educação,",
+               "trabalho e rendimento da população brasileira, sendo a principal fonte de",
+               "indicadores sobre o mercado de trabalho no país."),
+             h3("Metodologia e tratamento dos dados"),
+             p("Os microdados da PNAD Contínua são públicos e gratuitos, mas distribuídos em",
+               "arquivos brutos cujo uso exige tratamento estatístico específico (amostragem",
+               "complexa, pesos de calibração) e conhecimento técnico de programação."),
+             p("Este dashboard filtra os microdados trimestrais pela variável V4013 (atividade",
+               "econômica do empreendimento), restringindo a base ao código 02000 da",
+               "CNAE-Domiciliar 2.0 — \"Produção florestal\" —, de modo a isolar os trabalhadores",
+               "do setor florestal em todo o Brasil."),
+             p(strong("Fonte dos dados: "), "Instituto Brasileiro de Geografia e Estatística (IBGE), PNAD Contínua — microdados trimestrais."),
+             helpText("Os valores exibidos neste dashboard são calculados sobre os registros da amostra,",
+                      "sem aplicação dos pesos amostrais da pesquisa.")
+    ),
+    
+    # Aba 1: Microdados
+    tabPanel("Microdados",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("filtro_ano", "Ano:",
+                             choices = sort(unique(dados_pnadc$ano), decreasing = TRUE)),
+                 pickerInput("filtro_trimestre", "Trimestre:",
+                             choices = sort(unique(dados_pnadc$trimestre)),
+                             selected = sort(unique(dados_pnadc$trimestre)),
+                             multiple = TRUE, options = picker_opcoes_trimestre),
+                 pickerInput("filtro_uf", "Estado (UF):",
+                             choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
+                             options = picker_opcoes),
+                 downloadButton("baixar_excel", "Exportar para Excel"),
+                 br(), br(),
+                 downloadButton("baixar_dicionario", "Baixar dicionário de códigos")
+               ),
+               mainPanel(
+                 DTOutput("tabela_dados", height = "420px"),
+                 hr(),
+                 h4("Dicionário de códigos da PNAD Contínua"),
+                 DTOutput("tabela_dicionario", height = "280px")
+               )
+             )
+    ),
+    
+    #  Aba 2: Panorama Territorial e Temporal
+    tabPanel("Panorama Territorial e Temporal",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("an_variavel", "Variável (código PNAD):",
+                             choices = lista_variaveis),
+                 pickerInput("an_uf", "Estado (UF):",
+                             choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
+                             options = picker_opcoes),
+                 helpText("A variável e o(s) estado(s) escolhidos acima valem para os dois blocos abaixo."),
+                 
+                 wellPanel(
+                   h5(strong("Evolução por período")),
+                   sliderInput("an_periodo", "Intervalo de anos:",
+                               min = ano_min, max = ano_max,
+                               value = c(max(ano_min, ano_max - 1), ano_max),
+                               step = 1, sep = ""),
+                   conditionalPanel(
+                     condition = cond_categorica,
+                     radioButtons("an_medida", "Medida:",
+                                  choices = c("Porcentagem" = "pct", "Número de registros" = "n"),
+                                  inline = TRUE)
+                   ),
+                   conditionalPanel(
+                     condition = "input.an_variavel == 'V4039'",
+                     checkboxInput("an_dif40", "Mostrar jornada como diferença em relação a 40 h", FALSE)
+                   )
+                 ),
+                 
+                 wellPanel(
+                   h5(strong("Panorama de um período")),
+                   selectInput("an_ano", "Ano:",
+                               choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
+                               selected = ano_max),
+                   pickerInput("an_trimestre", "Trimestre(s):",
+                               choices = sort(unique(dados_pnadc$trimestre)),
+                               selected = sort(unique(dados_pnadc$trimestre)),
+                               multiple = TRUE, options = picker_opcoes_trimestre),
+                   conditionalPanel(
+                     condition = cond_categorica,
+                     radioButtons("an_tipo", "Tipo de gráfico:",
+                                  choices = c("Barras", "Pizza"), inline = TRUE)
+                   )
+                 ),
+                 
+                 wellPanel(
+                   h5(strong("Mapa por estado")),
+                   selectInput("mapa_ano", "Ano:",
+                               choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
+                               selected = ano_max),
+                   pickerInput("mapa_trimestre", "Trimestre(s):",
+                               choices = sort(unique(dados_pnadc$trimestre)),
+                               selected = sort(unique(dados_pnadc$trimestre)),
+                               multiple = TRUE, options = picker_opcoes_trimestre),
+                   uiOutput("mapa_categoria_ui"),
+                   helpText("Variáveis numéricas mostram a média por estado.",
+                            "Variáveis categóricas mostram a % da categoria",
+                            "escolhida acima em cada estado.")
+                 )
+               ),
+               mainPanel(
+                 h4("Evolução por período"),
+                 plotOutput("grafico_evolucao", height = "340px"),
+                 downloadButton("baixar_evolucao", "Baixar gráfico (PNG)", class = "btn-sm"),
+                 hr(),
+                 h4("Panorama do(s) trimestre(s) selecionado(s)"),
+                 plotOutput("grafico_periodo", height = "340px"),
+                 downloadButton("baixar_periodo", "Baixar gráfico (PNG)", class = "btn-sm"),
+                 hr(),
+                 tags$div(
+                   tags$h3("InfoFlorestal: Indicadores sociais", style = "margin-bottom: 2px;"),
+                   tags$p("Análise de perfil demográfico, emprego e renda com dados da PNAD/IBGE",
+                          style = "color: #666; margin-top: 0;")
+                 ),
+                 leafletOutput("mapa_brasil", height = "480px"),
+                 br(),
+                 helpText("Valores calculados sobre os registros da amostra da",
+                          "PNAD Contínua, sem aplicar pesos amostrais.")
+               )
+             )
+    ),
+    
+    #Aba 3: Cruzamento de variáveis
+    tabPanel("Cruzamento de variáveis",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("cmp_tipo", "Tipo de comparação:",
+                             choices = c(
+                               "Cargos × Gênero"                  = "cargos_genero",
+                               "Cargos × Cor"                      = "cargos_cor",
+                               "Gênero × Faixa de rendimento"       = "genero_rendimento",
+                               "Cor × Faixa de rendimento"          = "cor_rendimento",
+                               "Horas trabalhadas × Gênero"         = "horas_genero",
+                               "Horas trabalhadas × Cor"            = "horas_cor",
+                               "Cargos × Faixa de rendimento"       = "cargos_rendimento"
+                             )),
+                 hr(),
+                 selectInput("cmp_ano", "Ano:",
+                             choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
+                             selected = ano_max),
+                 pickerInput("cmp_trimestre", "Trimestre(s):",
+                             choices = sort(unique(dados_pnadc$trimestre)),
+                             selected = sort(unique(dados_pnadc$trimestre)),
+                             multiple = TRUE, options = picker_opcoes_trimestre),
+                 pickerInput("cmp_uf", "Estado (UF):",
+                             choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
+                             options = picker_opcoes)
+               ),
+               mainPanel(
+                 plotOutput("grafico_comparacao", height = "440px"),
+                 downloadButton("baixar_comparacao", "Baixar gráfico (PNG)", class = "btn-sm"),
+                 br(), br(),
+                 helpText("Valores calculados sobre os registros da amostra da",
+                          "PNAD Contínua, sem aplicar pesos amostrais.")
+               )
+             )
+    ),
+    
+    # Aba 4: Quem Somos
+    tabPanel("Quem Somos",
+             h3("LEMAF — Laboratório de Ciência de Dados em Manejo Florestal"),
+             p("Este dashboard é desenvolvido e mantido pelo Laboratório de Economia Florestal,",
+               "vinculado ao LEMAF (Laboratório de Ciência de Dados em Manejo Florestal) da",
+               "Universidade Federal de Lavras (UFLA), com o objetivo de tornar acessíveis, a",
+               "trabalhadores, empresas, gestores públicos e pesquisadores, indicadores sociais",
+               "e econômicos do setor florestal brasileiro extraídos da PNAD Contínua."),
+             h4("Equipe"),
+             p("Carolina Souza Jarochinski Dellú, orientadora — Departamento de Ciências Florestais (DCF), UFLA"),
+             p("Guilherme Ribeiro Aguiar, Departamento de Ciências Florestais (DCF), UFLA"),
+             p("Ana Carolina Cesar Ambrizi, desenvolvimento do dashboard (TCC em Bacharelado",
+               "Interdisciplinar em Inovação, Ciência e Tecnologia (BICT), UFLA)"),
+             h4("Contato"),
+             p("Campus da UFLA"),
+             p("Telefone: (35) 3829-1700"),
+             p("E-mail: lemaf@ufla.br")
     )
-  ),
-
-  # -- Aba 2: Análises (gráficos de 1 critério - seletores "an_") --
-  tabPanel("Análises",
-    sidebarLayout(
-      sidebarPanel(
-        selectInput("an_variavel", "Variável (código PNAD):",
-                    choices = lista_variaveis),
-        pickerInput("an_uf", "Estado (UF):",
-                    choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
-                    options = picker_opcoes),
-        helpText("A variável e o(s) estado(s) escolhidos acima valem para os dois blocos abaixo."),
-
-        wellPanel(
-          h5(strong("Evolução por período")),
-          sliderInput("an_periodo", "Intervalo de anos:",
-                      min = ano_min, max = ano_max,
-                      value = c(max(ano_min, ano_max - 1), ano_max),
-                      step = 1, sep = ""),
-          conditionalPanel(
-            condition = cond_categorica,
-            radioButtons("an_medida", "Medida:",
-                         choices = c("Porcentagem" = "pct", "Número de registros" = "n"),
-                         inline = TRUE)
-          ),
-          conditionalPanel(
-            condition = "input.an_variavel == 'V4039'",
-            checkboxInput("an_dif40", "Mostrar jornada como diferença em relação a 40 h", FALSE)
-          )
-        ),
-
-        wellPanel(
-          h5(strong("Panorama de um período")),
-          selectInput("an_ano", "Ano:",
-                      choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
-                      selected = ano_max),
-          pickerInput("an_trimestre", "Trimestre(s):",
-                      choices = sort(unique(dados_pnadc$trimestre)),
-                      selected = sort(unique(dados_pnadc$trimestre)),
-                      multiple = TRUE, options = picker_opcoes_trimestre),
-          conditionalPanel(
-            condition = cond_categorica,
-            radioButtons("an_tipo", "Tipo de gráfico:",
-                         choices = c("Barras", "Pizza"), inline = TRUE)
-          )
-        ),
-
-        wellPanel(
-          h5(strong("Mapa por estado")),
-          selectInput("mapa_ano", "Ano:",
-                      choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
-                      selected = ano_max),
-          pickerInput("mapa_trimestre", "Trimestre(s):",
-                      choices = sort(unique(dados_pnadc$trimestre)),
-                      selected = sort(unique(dados_pnadc$trimestre)),
-                      multiple = TRUE, options = picker_opcoes_trimestre),
-          uiOutput("mapa_categoria_ui"),
-          helpText("Variáveis numéricas mostram a média por estado.",
-                   "Variáveis categóricas mostram a % da categoria",
-                   "escolhida acima em cada estado.")
-        )
-      ),
-      mainPanel(
-        h4("Evolução por período"),
-        plotOutput("grafico_evolucao", height = "340px"),
-        downloadButton("baixar_evolucao", "Baixar gráfico (PNG)", class = "btn-sm"),
-        hr(),
-        h4("Panorama do(s) trimestre(s) selecionado(s)"),
-        plotOutput("grafico_periodo", height = "340px"),
-        downloadButton("baixar_periodo", "Baixar gráfico (PNG)", class = "btn-sm"),
-        hr(),
-        h4("Mapa por estado"),
-        leafletOutput("mapa_brasil", height = "480px"),
-        br(),
-        helpText("Valores calculados sobre os registros da amostra da",
-                 "PNAD Contínua, sem aplicar pesos amostrais.")
-      )
-    )
-  ),
-
-  # -- Aba 3: Comparações (gráficos cruzando 2 critérios - seletores "cmp_") --
-  tabPanel("Comparações",
-    sidebarLayout(
-      sidebarPanel(
-        selectInput("cmp_tipo", "Tipo de comparação:",
-          choices = c(
-            "Cargos × Gênero"                  = "cargos_genero",
-            "Cargos × Cor"                      = "cargos_cor",
-            "Gênero × Faixa de rendimento"       = "genero_rendimento",
-            "Cor × Faixa de rendimento"          = "cor_rendimento",
-            "Horas trabalhadas × Gênero"         = "horas_genero",
-            "Horas trabalhadas × Cor"            = "horas_cor",
-            "Cargos × Faixa de rendimento"       = "cargos_rendimento"
-          )),
-        hr(),
-        selectInput("cmp_ano", "Ano:",
-                    choices = sort(unique(dados_pnadc$ano), decreasing = TRUE),
-                    selected = ano_max),
-        pickerInput("cmp_trimestre", "Trimestre(s):",
-                    choices = sort(unique(dados_pnadc$trimestre)),
-                    selected = sort(unique(dados_pnadc$trimestre)),
-                    multiple = TRUE, options = picker_opcoes_trimestre),
-        pickerInput("cmp_uf", "Estado (UF):",
-                    choices = lista_ufs, selected = lista_ufs, multiple = TRUE,
-                    options = picker_opcoes)
-      ),
-      mainPanel(
-        plotOutput("grafico_comparacao", height = "440px"),
-        downloadButton("baixar_comparacao", "Baixar gráfico (PNG)", class = "btn-sm"),
-        br(), br(),
-        helpText("Valores calculados sobre os registros da amostra da",
-                 "PNAD Contínua, sem aplicar pesos amostrais.")
-      )
-    )
-  )
   )
 )
 
-# ---- 3) Lógica do app (server) --------------------------------
+#3) Lógica do app (server), outputs
 server <- function(input, output, session) {
-
-  # "Selecionar todos" / "Limpar seleção" agora é o actionsBox embutido no
-  # próprio pickerInput — não precisa mais de observeEvent para isso.
-
+  
   dados_filtrados <- reactive({
     req(input$filtro_trimestre)
     validate(need(length(input$filtro_uf) > 0, "Selecione pelo menos um estado."))
@@ -528,15 +554,15 @@ server <- function(input, output, session) {
              trimestre %in% input$filtro_trimestre,
              UF %in% input$filtro_uf)
   })
-
-  # -- Aba Dados --
+  
+  # Aba Dados
   output$tabela_dados <- renderDT({
     datatable(dados_filtrados(),
               class = "compact stripe hover",
               options = list(pageLength = 20, scrollY = "350px", scrollCollapse = TRUE,
-                              scrollX = TRUE, dom = "tip", autoWidth = TRUE))
+                             scrollX = TRUE, dom = "tip", autoWidth = TRUE))
   })
-
+  
   output$baixar_excel <- downloadHandler(
     filename = function() {
       trimestres_txt <- paste(sort(input$filtro_trimestre), collapse = "-")
@@ -545,26 +571,26 @@ server <- function(input, output, session) {
     },
     content = function(file) write_xlsx(dados_filtrados(), file)
   )
-
+  
   output$tabela_dicionario <- renderDT({
     datatable(dicionario_pnad,
               class = "compact stripe hover",
               colnames = c("Categoria" = "categoria", "Código" = "codigo", "Descrição" = "descricao"),
               options = list(pageLength = 20, scrollY = "220px", scrollCollapse = TRUE,
-                              scrollX = TRUE, dom = "tip", autoWidth = TRUE,
-                              columnDefs = list(
-                                list(width = "150px", targets = 0),
-                                list(width = "90px",  targets = 1),
-                                list(width = "480px", targets = 2)
-                              )))
+                             scrollX = TRUE, dom = "tip", autoWidth = TRUE,
+                             columnDefs = list(
+                               list(width = "150px", targets = 0),
+                               list(width = "90px",  targets = 1),
+                               list(width = "480px", targets = 2)
+                             )))
   })
-
+  
   output$baixar_dicionario <- downloadHandler(
     filename = function() "dicionario_codigos_pnad.xlsx",
     content = function(file) write_xlsx(dicionario_pnad, file)
   )
-
-  # -- Aba Análises --
+  
+  # Aba Análises
   base_var <- reactive({
     req(input$an_variavel)
     validate(need(input$an_variavel %in% names(dados_pnadc),
@@ -572,7 +598,7 @@ server <- function(input, output, session) {
     validate(need(length(input$an_uf) > 0, "Selecione pelo menos um estado."))
     dados_pnadc %>% filter(UF %in% input$an_uf) %>% preparar_var(input$an_variavel)
   })
-
+  
   base_evolucao <- reactive({
     req(input$an_periodo)
     df <- base_var() %>%
@@ -581,13 +607,13 @@ server <- function(input, output, session) {
     df %>% mutate(periodo = factor(paste0(ano, ".", trimestre),
                                    levels = paste0(chaves %/% 10, ".", chaves %% 10)))
   })
-
+  
   base_panorama <- reactive({
     req(input$an_ano)
     validate(need(length(input$an_trimestre) > 0, "Marque pelo menos um trimestre."))
     filtrar_periodo(base_var(), input$an_ano, input$an_trimestre)
   })
-
+  
   plot_evolucao <- reactive({
     var <- input$an_variavel
     df <- base_evolucao()
@@ -596,7 +622,7 @@ server <- function(input, output, session) {
     n_per <- nlevels(df$periodo)
     passo <- max(1, ceiling(n_per / 16))
     mostrar_rotulos <- n_per <= 12
-
+    
     if (var == "V20082") {
       resumo <- bind_rows(
         df %>% group_by(periodo) %>% summarise(y = mean(valor), .groups = "drop") %>% mutate(estat = "Média"),
@@ -611,7 +637,7 @@ server <- function(input, output, session) {
       if (mostrar_rotulos) {
         p <- p + geom_text(aes(label = round(y, 1)), vjust = -0.8, size = 3, show.legend = FALSE)
       }
-
+      
     } else if (var == "V4039") {
       resumo <- df %>% group_by(periodo) %>% summarise(y = mean(valor), .groups = "drop")
       if (isTRUE(input$an_dif40)) {
@@ -631,7 +657,7 @@ server <- function(input, output, session) {
                subtitle = "Linhas tracejadas: 40 h (referência) e 44 h (limite legal)")
         if (mostrar_rotulos) p <- p + geom_text(aes(label = sprintf("%.2f h", y)), vjust = -0.8, size = 3)
       }
-
+      
     } else {
       usa_pct <- identical(input$an_medida, "pct")
       resumo <- df %>%
@@ -651,21 +677,21 @@ server <- function(input, output, session) {
       if (usa_pct) p <- p + scale_y_continuous(labels = function(v) paste0(round(v), "%"))
       if (mostrar_rotulos) p <- p + geom_text(aes(label = rot), vjust = -0.8, size = 3, show.legend = FALSE)
     }
-
+    
     p +
       scale_x_discrete(breaks = levels(df$periodo)[seq(1, n_per, by = passo)]) +
       labs(title = paste("Evolução por período -", rotulo), x = "Período (ano.trimestre)") +
       theme_minimal() +
       theme(legend.position = "bottom", axis.text.x = element_text(angle = 45, hjust = 1))
   })
-
+  
   plot_periodo <- reactive({
     var <- input$an_variavel
     df <- base_panorama()
     validate(need(nrow(df) > 0, "Sem dados para o ano e trimestre selecionados."))
     rotulo <- rotulo_variavel(var)
     titulo <- paste0(rotulo, " - ", texto_periodo(input$an_ano, input$an_trimestre))
-
+    
     if (var == "V20082") {
       # Idade: um ponto por funcionário (jitter), média marcada em vermelho,
       # igual ao gráfico do relatório da IC (Figura 15)
@@ -683,7 +709,7 @@ server <- function(input, output, session) {
         theme_minimal() +
         theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
               legend.position = "bottom")
-
+      
     } else if (var == "V4039") {
       # Horas trabalhadas: histograma em barras
       media <- mean(df$valor)
@@ -693,14 +719,14 @@ server <- function(input, output, session) {
         labs(x = "Horas semanais", y = "Registros",
              subtitle = paste0("Média = ", round(media, 2), " h (linha tracejada)")) +
         theme_minimal()
-
+      
     } else {
       resumo <- df %>%
         agrupar_top() %>%
         ordenar_categorias(var) %>%
         count(valor) %>%
         mutate(pct = n / sum(n) * 100)
-
+      
       if (identical(input$an_tipo, "Pizza")) {
         p <- ggplot(resumo, aes(x = "", y = n, fill = valor)) +
           geom_col(width = 1, color = "black") +
@@ -727,23 +753,23 @@ server <- function(input, output, session) {
           theme_minimal()
       }
     }
-
+    
     p + labs(title = titulo) + theme(plot.title = element_text(size = 12, hjust = 0.5))
   })
-
+  
   output$grafico_evolucao <- renderPlot({ plot_evolucao() })
   output$grafico_periodo  <- renderPlot({ plot_periodo() })
-
+  
   sufixo_tri <- function(x) paste(sort(x), collapse = "")
-
+  
   output$baixar_evolucao <- baixar_grafico(
     function() paste0("evolucao_", input$an_variavel, "_", input$an_periodo[1], "-", input$an_periodo[2]),
     plot_evolucao, largura = 10, altura = 6)
-
+  
   output$baixar_periodo <- baixar_grafico(
     function() paste0("panorama_", input$an_variavel, "_", input$an_ano, "_T", sufixo_tri(input$an_trimestre)),
     plot_periodo, largura = 9, altura = 6)
-
+  
   # -- Aba Comparações --
   plot_comparacao <- reactive({
     req(input$cmp_ano, input$cmp_tipo)
@@ -752,26 +778,26 @@ server <- function(input, output, session) {
     df <- filtrar_periodo(dados_pnadc, input$cmp_ano, input$cmp_trimestre) %>%
       filter(UF %in% input$cmp_uf)
     p <- switch(input$cmp_tipo,
-      "cargos_genero"      = grafico_cruzamento(df, "V4010", "V2007", FALSE),
-      "cargos_cor"         = grafico_cruzamento(df, "V4010", "V2010", FALSE),
-      "genero_rendimento"  = grafico_cruzamento(df, "V2007", "V403311", FALSE),
-      "cor_rendimento"     = grafico_cruzamento(df, "V2010", "V403311", FALSE),
-      "horas_genero"       = grafico_cruzamento_num(df, "V4039", "V2007", FALSE),
-      "horas_cor"          = grafico_cruzamento_num(df, "V4039", "V2010", FALSE),
-      "cargos_rendimento"  = grafico_cruzamento(df, "V4010", "V403311", FALSE)
+                "cargos_genero"      = grafico_cruzamento(df, "V4010", "V2007", FALSE),
+                "cargos_cor"         = grafico_cruzamento(df, "V4010", "V2010", FALSE),
+                "genero_rendimento"  = grafico_cruzamento(df, "V2007", "V403311", FALSE),
+                "cor_rendimento"     = grafico_cruzamento(df, "V2010", "V403311", FALSE),
+                "horas_genero"       = grafico_cruzamento_num(df, "V4039", "V2007", FALSE),
+                "horas_cor"          = grafico_cruzamento_num(df, "V4039", "V2010", FALSE),
+                "cargos_rendimento"  = grafico_cruzamento(df, "V4010", "V403311", FALSE)
     )
     p + labs(subtitle = texto_periodo(input$cmp_ano, input$cmp_trimestre)) +
       theme(plot.title = element_text(size = 12, hjust = 0.5))
   })
-
+  
   output$grafico_comparacao <- renderPlot({ plot_comparacao() })
-
+  
   output$baixar_comparacao <- baixar_grafico(
     function() paste0("comparacao_", input$cmp_tipo, "_", input$cmp_ano, "_T", sufixo_tri(input$cmp_trimestre)),
     plot_comparacao, largura = 10, altura = 7)
-
+  
   # -- Mapa (dentro da aba Análises, usa a mesma an_variavel) --
-
+  
   # Seletor de categoria só aparece quando a variável é categórica; as
   # opções mudam sozinhas conforme a variável escolhida em an_variavel.
   output$mapa_categoria_ui <- renderUI({
@@ -783,17 +809,17 @@ server <- function(input, output, session) {
     selectInput("mapa_categoria", "Categoria de interesse:",
                 choices = cats, selected = cats[1])
   })
-
+  
   output$mapa_brasil <- renderLeaflet({
     validate(need(!is.null(mapa_brasil), paste(
       "Não foi possível carregar o contorno dos estados (API do IBGE",
       "fora do ar ou sem conexão com a internet).")))
     validate(need(length(input$mapa_trimestre) > 0, "Marque pelo menos um trimestre."))
     req(input$mapa_ano, input$an_variavel)
-
+    
     df <- filtrar_periodo(dados_pnadc, input$mapa_ano, input$mapa_trimestre)
     var <- input$an_variavel
-
+    
     if (var %in% c(vars_numericas, "V20082")) {
       resumo <- preparar_var(df, var) %>%
         group_by(UF) %>% summarise(valor = mean(valor), .groups = "drop")
@@ -807,10 +833,10 @@ server <- function(input, output, session) {
       legenda <- paste0("% ", input$mapa_categoria)
       rotulo_val <- function(v) paste0(round(v, 1), "%")
     }
-
+    
     mapa_dados <- mapa_brasil %>% left_join(resumo, by = "UF")
     pal <- colorNumeric("viridis", mapa_dados$valor, na.color = "#f0f0f0")
-
+    
     leaflet(mapa_dados) %>%
       addProviderTiles("Esri.WorldGrayCanvas") %>%
       addPolygons(
