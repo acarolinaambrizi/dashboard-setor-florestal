@@ -1,114 +1,64 @@
-# Dashboard — Indicadores do Setor Florestal (PNAD Contínua)
+# Dashboard de Indicadores do Setor Florestal
 
-Dashboard em Shiny que traduz dados da PNAD Contínua (IBGE) em indicadores
-sociais e econômicos do setor florestal brasileiro. Desenvolvido como parte
-de um Trabalho de Conclusão de Curso (TCC) e mantido pelo LEMAF
-(Laboratório de Estudos e Projetos em Manejo Florestal — DCF/UFLA).
+Painel web interativo, feito em **R/Shiny**, que transforma os microdados públicos da **PNAD Contínua (IBGE)** em indicadores sociais e econômicos sobre o trabalho no setor florestal brasileiro.
 
-**App publicado:** https://pnadlemaf.shinyapps.io/indicadores-florestal-mg/
+Projeto desenvolvido como meu **Trabalho de Conclusão de Curso** no Bacharelado Interdisciplinar em Inovação, Ciência e Tecnologia (BICT) da UFLA, no LEMAF — Laboratório de Ciência de Dados em Manejo Florestal (DCF/UFLA).
 
----
+🔗 **Ver o dashboard online:** [pnadlemaf.shinyapps.io/indicadores-florestal-mg](https://pnadlemaf.shinyapps.io/indicadores-florestal-mg/)
 
-## Os dados ficam neste mesmo repositório
+> Este repositório é a minha cópia (fork) da versão que desenvolvi. A versão oficial, mantida pelo laboratório, está em [pnadlemaflemaf/dashboard-setor-florestal](https://github.com/pnadlemaflemaf/dashboard-setor-florestal).
 
-Diferente do que costuma ser recomendado para bases muito grandes, aqui os
-`.xlsx` da PNAD **ficam dentro da pasta `dados/`, versionados no GitHub
-junto com o código** — nenhum arquivo individual passa de 100MB (o limite
-do GitHub), então não há problema técnico em mantê-los juntos. Isso
-simplifica a vida de quem for manter o projeto: cloná-lo já traz tudo.
+![Aba Dados](COLE-AQUI-O-PRINT-DA-ABA-DADOS.png)
 
-Se os dados da PNAD forem atualizados (novo trimestre, por exemplo), a
-pessoa responsável deve gerar o novo `.xlsx` (script de importação, feito
-com o pacote `PNADcIBGE`), colocar dentro de `dados/` e publicar a mudança
-pelo GitHub Desktop, do mesmo jeito que uma mudança de código (ver seção
-"Como atualizar o código", abaixo).
+## O problema
 
-**Nota sobre o tamanho:** a pasta `dados/` já soma mais de 1GB (58 trimestres
-da PNAD, de 2012 a 2026) e só vai crescer a cada atualização — isso é uma
-escolha consciente, priorizando simplicidade (um único clone traz tudo) em
-troca de clones um pouco mais lentos com o tempo. Vale ficar de olho: se um
-dia isso virar um incômodo real (clone muito lento, por exemplo), a solução
-é mover os `.xlsx` para uma pasta compartilhada do laboratório e ajustar o
-`.gitignore` — mas isso não desfaz o que já está no histórico do Git, só
-evita que a pasta cresça mais a partir dali.
+Os dados da PNAD Contínua são públicos, mas difíceis de usar: são arquivos grandes, com códigos e variáveis que exigem conhecimento técnico para filtrar e interpretar. O objetivo do projeto foi tornar essas informações **acessíveis para quem não programa**, em uma página web de fácil consulta.
 
----
+## O que o dashboard faz
 
-## Estrutura deste repositório
+- **Dados:** tabelas filtráveis com os indicadores do setor florestal e exportação para Excel
+- **Análises:** gráficos com a evolução dos indicadores ao longo dos trimestres
+- **Sobre a PNAD Contínua:** explicação da fonte dos dados e de como interpretá-los
+- **Laboratório:** apresentação do LEMAF e dos projetos de pesquisa
 
-```
-.
-├── app.R                  ← o dashboard em si (Shiny)
-├── documentacao_app.md    ← como o código funciona por dentro
-├── guia_funcoes.md        ← explicação das funções usadas (bom para quem está aprendendo R/Shiny)
-├── dados/                 ← os .xlsx da PNAD e o cache .rds, versionados aqui mesmo
-└── .gitignore             ← impede que arquivos locais (específicos de cada PC) sejam versionados
-```
+O setor florestal é identificado nos microdados pela classificação de atividade econômica (CNAE — Divisão 02, Produção florestal). A base cobre **58 trimestres, de 2012 a 2026**.
 
----
+![Aba Análises](COLE-AQUI-O-PRINT-DA-ABA-ANALISES.png)
 
-## Como rodar o app localmente
+## Tecnologias
 
-1. Instale o R e o RStudio, se ainda não tiver.
-2. Instale os pacotes necessários (uma vez só, no console do R):
+- **R** e **Shiny** para a aplicação web
+- **PNADcIBGE** para importar os microdados do IBGE
+- **dplyr** e **tibble** para tratamento dos dados
+- **ggplot2** para os gráficos e **DT** para as tabelas interativas
+- **writexl** para exportação em Excel
+- **shinyapps.io** para publicação
+
+## Meu papel
+
+- Desenvolvi o aplicativo do zero, aprendendo R e Shiny durante o projeto
+- Tratei e organizei os microdados da PNAD Contínua para o setor florestal
+- Estruturei a navegação e o visual a partir de um protótipo validado com a orientação
+- Publiquei o dashboard no shinyapps.io
+- Escrevi a documentação para que a equipe do laboratório consiga manter e atualizar o projeto
+
+## Como rodar localmente
+
+1. Instale o [R](https://cran.r-project.org) e o [RStudio](https://posit.co/download/rstudio-desktop/).
+2. No console do R, instale os pacotes:
    ```r
-   install.packages(c("shiny", "dplyr", "DT", "ggplot2", "writexl",
-                       "readxl", "tibble", "leaflet", "sf", "shinyWidgets"))
+   install.packages(c("shiny", "dplyr", "DT", "ggplot2", "writexl", "readxl", "tibble", "shinyWidgets"))
    ```
-3. Clone este repositório (ver seção "Como atualizar o código", abaixo) — os
-   dados já vêm juntos, dentro de `dados/`.
-4. Abra `app.R` no RStudio e clique em **Run App** (ou rode `shiny::runApp()`
-   com a pasta do projeto como diretório de trabalho).
+3. Clone o repositório. Os dados já vêm junto, mas a pasta `dados/` passa de 1 GB.
+4. Abra o `app.R` no RStudio e clique em **Run App**.
 
-Na primeira vez, o app vai demorar um pouco mais (lendo todos os `.xlsx` e
-criando um cache). Nas próximas vezes, abre bem mais rápido.
+A primeira execução é mais lenta, porque o app lê todos os arquivos e cria um cache.
 
----
+## Orientação
 
-## Como atualizar o código (sem usar linha de comando)
+- Orientadora: Profa. Carolina Souza Jarochinski Dellú (DCF/UFLA)
+- Coorientador: Guilherme Ribeiro Aguiar (DCF/UFLA)
 
-Recomendado: **GitHub Desktop** (https://desktop.github.com/) — interface
-visual, não precisa saber comandos de git.
+## Autora
 
-1. Instale o GitHub Desktop e entre com a conta do GitHub do LEMAF.
-2. **File > Clone repository** e escolha este repositório — ele baixa uma
-   cópia para o seu computador.
-3. Edite o `app.R` normalmente no RStudio (ou o `.md` de documentação, se
-   for o caso) e salve.
-4. Volte para o GitHub Desktop: as mudanças aparecem listadas
-   automaticamente. Escreva uma frase curta dizendo o que mudou, clique em
-   **Commit to main** e depois em **Push origin**.
-5. Pronto — a mudança já está salva no histórico do GitHub, visível para
-   qualquer pessoa do laboratório.
-
-Isso **não publica a mudança no app ao vivo** — isso é um passo separado
-(próxima seção).
-
----
-
-## Como publicar (deploy) a mudança no shinyapps.io
-
-1. Pegue (ou peça) as credenciais da conta shinyapps.io do laboratório —
-   usuário **pnadlemaf**. Veja em `Account > Tokens` no painel do
-   shinyapps.io, e rode uma vez:
-   ```r
-   rsconnect::setAccountInfo(name = "pnadlemaf", token = "...", secret = "...")
-   ```
-2. Com a pasta do projeto como diretório de trabalho (confirme com
-   `getwd()`), rode:
-   ```r
-   rsconnect::deployApp(appName = "indicadores-florestal-mg")
-   ```
-3. Isso atualiza o app que já está publicado — a URL não muda
-   (`pnadlemaf.shinyapps.io/indicadores-florestal-mg/`).
-
-**Plano gratuito do shinyapps.io:** 5 apps e 25 horas ativas por mês. Se
-precisar de mais, é só avisar a pessoa responsável pela conta.
-
----
-
-## Dúvidas / contato
-
-Projeto desenvolvido originalmente por Ana Carolina Cesar Ambrizi (TCC —
-BICT/UFLA). Para dúvidas sobre o funcionamento do código, comece por
-`documentacao_app.md` e `guia_funcoes.md` neste repositório.
+**Ana Carolina Cesar Ambrizi** · [LinkedIn](https://linkedin.com/in/ana-carolina-ambrizi) · [GitHub](https://github.com/acarolinaambrizi)
